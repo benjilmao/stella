@@ -1327,6 +1327,53 @@ val config = Config(Stella.NAMESPACE) {
             }
 
             toggle {
+                configName = "profileViewer.chromaMaxBars"
+                name = "Chroma Max Bars"
+                description = "Render max level skill and cata/slayer/collection bars as animated rainbows"
+                default = true
+            }
+
+            slider {
+                configName = "profileViewer.chromaSpeed"
+                name = "Chroma Speed"
+                description = "Chroma scroll speed multiplier (0 to freeze)"
+                min = 0f
+                max = 5f
+                default = 1f
+                shouldShow { settings -> settings["profileViewer.chromaMaxBars"] as Boolean }
+            }
+
+            slider {
+                configName = "profileViewer.chromaScale"
+                name = "Chroma Scale"
+                description = "Scale width of the color bands"
+                min = 0.1f
+                max = 5f
+                default = 1f
+                shouldShow { settings -> settings["profileViewer.chromaMaxBars"] as Boolean }
+            }
+
+            slider {
+                configName = "profileViewer.chromaSaturation"
+                name = "Chroma Saturation"
+                description = "Saturation of the rainbow colors"
+                min = 0f
+                max = 1f
+                default = 0.8f
+                shouldShow { settings -> settings["profileViewer.chromaMaxBars"] as Boolean }
+            }
+
+            slider {
+                configName = "profileViewer.chromaBrightness"
+                name = "Chroma Brightness"
+                description = "Brightness of the rainbow colors"
+                min = 0f
+                max = 1f
+                default = 1f
+                shouldShow { settings -> settings["profileViewer.chromaMaxBars"] as Boolean }
+            }
+
+            toggle {
                 configName = "profileViewer.overflow"
                 name = "Overflow Skills"
                 description = "Shows overflow levels for skills on the main page"

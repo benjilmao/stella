@@ -31,6 +31,7 @@ data class SkyblockResponse(
         @SerializedName("profile_id") val id: String,
         val selected: Boolean = false,
         @SerializedName("cute_name") val cuteName: String? = null,
+        @SerializedName("game_mode") val gameMode: String? = null,
         val members: Map<String, SkyblockMember> = emptyMap(),
         val banking: Banking = Banking()
     )

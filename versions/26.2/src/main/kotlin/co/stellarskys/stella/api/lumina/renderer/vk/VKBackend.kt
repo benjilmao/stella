@@ -52,12 +52,16 @@ object VKBackend : LuminaBackend {
 
     fun ensureInit() {
         if (initialized) return
-        VKUtils.init(); VKPipelineManager.init(); VKShapeRenderer.init(); VKTextureRenderer.init()
+        VKUtils.init(); VKPipelineManager.init(); VKShapeRenderer.init(); VKTextureRenderer.init(); VKChromaRenderer.init()
         initialized = true
     }
 
     override fun renderShapes(shapes: List<Lumina.QueuedShape>, vw: Int, vh: Int) {
         VKShapeRenderer.render(commandBuffer ?: return, shapes, vw, vh)
+    }
+
+    override fun renderChroma(shapes: List<Lumina.ChromaShape>, vw: Int, vh: Int) {
+        VKChromaRenderer.render(commandBuffer ?: return, shapes, vw, vh)
     }
 
     override fun renderTextured(text: List<LuminaBackend.TextEntry>, images: List<LuminaBackend.ImageEntry>, vw: Int, vh: Int) {
@@ -167,7 +171,7 @@ object VKBackend : LuminaBackend {
         fbWidth = width; fbHeight = height
 
         if (Stella.DELTA.frame != lastResetFrame) {
-            VKShapeRenderer.resetFrame(); VKTextureRenderer.resetFrame()
+            VKShapeRenderer.resetFrame(); VKTextureRenderer.resetFrame(); VKChromaRenderer.resetFrame()
             lastResetFrame = Stella.DELTA.frame
         }
 
@@ -192,7 +196,7 @@ object VKBackend : LuminaBackend {
         textures.keys.toList().forEach { deleteTexture(it) }
         if (targetImageView != VK_NULL_HANDLE) vkDestroyImageView(VKUtils.device, targetImageView, null)
         if (framebuffer != VK_NULL_HANDLE) vkDestroyFramebuffer(VKUtils.device, framebuffer, null)
-        VKTextureRenderer.destroy(); VKShapeRenderer.destroy(); VKPipelineManager.destroy(); VKUtils.destroy()
+        VKTextureRenderer.destroy(); VKShapeRenderer.destroy(); VKChromaRenderer.destroy(); VKPipelineManager.destroy(); VKUtils.destroy()
         initialized = false
     }
 

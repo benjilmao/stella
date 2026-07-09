@@ -9,6 +9,7 @@ import java.nio.ByteBuffer
 
 object GLBackend : LuminaBackend {
     override fun renderShapes(shapes: List<Lumina.QueuedShape>, vw: Int, vh: Int) = GLShapeRenderer.render(shapes, vw, vh)
+    override fun renderChroma(shapes: List<Lumina.ChromaShape>, vw: Int, vh: Int) = GLChromaRenderer.render(shapes, vw, vh)
     override fun renderTextured(text: List<LuminaBackend.TextEntry>, images: List<LuminaBackend.ImageEntry>, vw: Int, vh: Int) = GLTextureRenderer.render(text, images, vw, vh)
 
     override fun uploadTexture(width: Int, height: Int, data: ByteBuffer, format: LuminaBackend.TextureFormat, mipmap: Boolean): Int {

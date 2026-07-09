@@ -12,8 +12,10 @@ internal object VKPipelineManager {
     var shapePipeline: Long = VK_NULL_HANDLE
     var shapePipelineMasked: Long = VK_NULL_HANDLE
     var texturePipeline: Long = VK_NULL_HANDLE
+    var chromaPipeline: Long = VK_NULL_HANDLE
     var shapePipelineLayout: Long = VK_NULL_HANDLE
     var texturePipelineLayout: Long = VK_NULL_HANDLE
+    var chromaPipelineLayout: Long = VK_NULL_HANDLE
     var textureDescSetLayout: Long = VK_NULL_HANDLE
     var renderPass: Long = VK_NULL_HANDLE
     private var currentRenderPassFormat: Int = 0
@@ -21,6 +23,8 @@ internal object VKPipelineManager {
     private var shapeFrag: Long = VK_NULL_HANDLE
     private var texVert: Long = VK_NULL_HANDLE
     private var texFrag: Long = VK_NULL_HANDLE
+    private var chromaVert: Long = VK_NULL_HANDLE
+    private var chromaFrag: Long = VK_NULL_HANDLE
 
     data class Attr(val location: Int, val format: Int, val offset: Int)
 
@@ -32,20 +36,24 @@ internal object VKPipelineManager {
         shapeFrag = createShaderModule(loadSpirv("shaders/vk/lumina_shape_frag.spv"))
         texVert = createShaderModule(loadSpirv("shaders/vk/lumina_tex_vert.spv"))
         texFrag = createShaderModule(loadSpirv("shaders/vk/lumina_tex_frag.spv"))
+        chromaVert = createShaderModule(loadSpirv("shaders/vk/chroma_shape_vert.spv"))
+        chromaFrag = createShaderModule(loadSpirv("shaders/vk/chroma_shape_frag.spv"))
         createRenderPass(VK_FORMAT_R8G8B8A8_UNORM)
         createDescriptorSetLayout()
         createShapePipeline()
         createTexturePipeline()
+        createChromaPipeline()
     }
-
+ 
     fun ensureRenderPass(format: Int) {
         if (format == currentRenderPassFormat && renderPass != VK_NULL_HANDLE) return
         val d = VKUtils.device
         if (shapePipeline != VK_NULL_HANDLE) { vkDestroyPipeline(d, shapePipeline, null); shapePipeline = VK_NULL_HANDLE }
         if (shapePipelineMasked != VK_NULL_HANDLE) { vkDestroyPipeline(d, shapePipelineMasked, null); shapePipelineMasked = VK_NULL_HANDLE }
         if (texturePipeline != VK_NULL_HANDLE) { vkDestroyPipeline(d, texturePipeline, null); texturePipeline = VK_NULL_HANDLE }
+        if (chromaPipeline != VK_NULL_HANDLE) { vkDestroyPipeline(d, chromaPipeline, null); chromaPipeline = VK_NULL_HANDLE }
         if (renderPass != VK_NULL_HANDLE) { vkDestroyRenderPass(d, renderPass, null); renderPass = VK_NULL_HANDLE }
-        createRenderPass(format); createShapePipeline(); createTexturePipeline()
+        createRenderPass(format); createShapePipeline(); createTexturePipeline(); createChromaPipeline()
     }
 
     private fun createRenderPass(format: Int) {
@@ -87,6 +95,11 @@ internal object VKPipelineManager {
     private fun createTexturePipeline() {
         texturePipelineLayout = createPipelineLayout(longArrayOf(textureDescSetLayout), 68)
         texturePipeline = buildPipeline(texturePipelineLayout, texVert, texFrag, 8 * 4, TEX_ATTRS, VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA)
+    }
+
+    private fun createChromaPipeline() {
+        chromaPipelineLayout = createPipelineLayout(longArrayOf(), 76)
+        chromaPipeline = buildPipeline(chromaPipelineLayout, chromaVert, chromaFrag, 7 * 4, SHAPE_ATTRS, VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA)
     }
 
     private fun createPipelineLayout(descSetLayouts: LongArray, pushConstantSize: Int): Long {
@@ -163,11 +176,12 @@ internal object VKPipelineManager {
 
     fun destroy() {
         val d = VKUtils.device
-        vkDestroyPipeline(d, shapePipeline, null); vkDestroyPipeline(d, shapePipelineMasked, null); vkDestroyPipeline(d, texturePipeline, null)
-        vkDestroyPipelineLayout(d, shapePipelineLayout, null); vkDestroyPipelineLayout(d, texturePipelineLayout, null)
+        vkDestroyPipeline(d, shapePipeline, null); vkDestroyPipeline(d, shapePipelineMasked, null); vkDestroyPipeline(d, texturePipeline, null); vkDestroyPipeline(d, chromaPipeline, null)
+        vkDestroyPipelineLayout(d, shapePipelineLayout, null); vkDestroyPipelineLayout(d, texturePipelineLayout, null); vkDestroyPipelineLayout(d, chromaPipelineLayout, null)
         vkDestroyDescriptorSetLayout(d, textureDescSetLayout, null)
         vkDestroyShaderModule(d, shapeVert, null); vkDestroyShaderModule(d, shapeFrag, null)
         vkDestroyShaderModule(d, texVert, null); vkDestroyShaderModule(d, texFrag, null)
+        vkDestroyShaderModule(d, chromaVert, null); vkDestroyShaderModule(d, chromaFrag, null)
         vkDestroyRenderPass(d, renderPass, null)
     }
 }

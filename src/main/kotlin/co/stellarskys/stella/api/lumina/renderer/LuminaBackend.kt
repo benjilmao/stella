@@ -12,6 +12,7 @@ interface LuminaBackend {
     enum class TextureFormat { RGBA, R8 }
 
     fun renderShapes(shapes: List<Lumina.QueuedShape>, vw: Int, vh: Int)
+    fun renderChroma(shapes: List<Lumina.ChromaShape>, vw: Int, vh: Int)
     fun renderTextured(text: List<TextEntry>, images: List<ImageEntry>, vw: Int, vh: Int)
     fun uploadTexture(width: Int, height: Int, data: ByteBuffer, format: TextureFormat, mipmap: Boolean = false): Int
     fun deleteTexture(id: Int)

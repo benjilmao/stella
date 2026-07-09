@@ -17,6 +17,11 @@ import kotlin.time.Duration.Companion.minutes
 object ProfileViewer: Feature("profileViewer") {
     val pv by config.property<Boolean>("profileViewer.pv")
     val showRarity by config.property<Boolean>("profileViewer.showRarity")
+    val chromaMaxBars by config.property<Boolean>("profileViewer.chromaMaxBars")
+    val chromaSpeed by config.property<Float>("profileViewer.chromaSpeed")
+    val chromaScale by config.property<Float>("profileViewer.chromaScale")
+    val chromaSaturation by config.property<Float>("profileViewer.chromaSaturation")
+    val chromaBrightness by config.property<Float>("profileViewer.chromaBrightness")
 
     override fun initialize() {
         SkillUtils.load()

@@ -24,20 +24,138 @@ import tech.thatgravyboat.skyblockapi.platform.texture
 import tech.thatgravyboat.skyblockapi.platform.textureUrl
 import tech.thatgravyboat.skyblockapi.utils.extentions.stripColor
 import tech.thatgravyboat.skyblockapi.utils.text.TextUtils.splitLines
+import co.stellarskys.stella.api.config.ui.Palette
+import co.stellarskys.stella.api.lumina.renderer.ChromaUtils
+import co.stellarskys.stella.features.msc.ProfileViewer
+import net.minecraft.network.chat.TextColor
 
 object Render2D {
     private val textureCache = mutableMapOf<UUID, PlayerSkin>()
     private var lastCacheClear = Chronos.zero
-    private val formattingRegex = "(?<!\\\\\\\\)&(?=[0-9a-fk-or])".toRegex()
+    private val formattingRegex = "(?<!\\\\\\\\)&(?=[0-9a-fk-orz])".toRegex()
+    private const val CHROMA_STEP = 0.012f
 
     fun drawImage(ctx: GuiGraphicsExtractor, image: Identifier?, x: Int, y: Int, width: Int, height: Int) {
         if (image == null) return
         ctx.blit(RenderPipelines.GUI_TEXTURED, image, x, y, 0f, 0f, width, height, width, height, width, height)
     }
 
+    private data class ChromaParams(
+        val time: Float,
+        val step: Float,
+        val sat: Float,
+        val bright: Float
+    ) {
+        fun hueAt(i: Int): Float = ((time - i * step) % 1.0f).let { if (it < 0) it + 1f else it }
+        fun rgbAt(i: Int): Int  = net.minecraft.util.Mth.hsvToRgb(hueAt(i), sat, bright)
+        fun colorAt(i: Int): Color = Color.getHSBColor(hueAt(i), sat, bright)
+    }
+
+    private fun chromaParams() = ChromaParams(
+        time  = ChromaUtils.currentTime(),
+        step  = CHROMA_STEP / ProfileViewer.chromaScale,
+        sat   = ProfileViewer.chromaSaturation,
+        bright = ProfileViewer.chromaBrightness
+    )
+
+    fun getChromaText(str: String): Component {
+        val clean = str.stripColor()
+        val comp = Component.literal("")
+        val p = chromaParams()
+        for (i in clean.indices) {
+            comp.append(Component.literal(clean[i].toString()).withColor(p.colorAt(i).rgb))
+        }
+        return comp
+    }
+
+    private fun isSapphire(comp: Component): Boolean {
+        return comp.style.color?.value == Palette.Sapphire.rgb and 0xFFFFFF
+    }
+
+    fun convertComponentToChroma(comp: Component): Component {
+        val clean = comp.string
+        val out = Component.literal("")
+        val p = chromaParams()
+        for (i in clean.indices) {
+            out.append(Component.literal(clean[i].toString()).withStyle(comp.style.withColor(TextColor.fromRgb(p.colorAt(i).rgb))))
+        }
+        return out
+    }
+
+    fun parseFormattingToComponent(str: String): Component {
+        if (!str.contains('§')) return Component.literal(str)
+        val root = Component.literal("")
+        val p = chromaParams()
+        val parts = str.split('§')
+        var currentStyle = net.minecraft.network.chat.Style.EMPTY
+        var isChroma = false
+        var charCount = 0
+
+        fun appendText(text: String) {
+            if (isChroma) {
+                for (c in text) {
+                    root.append(Component.literal(c.toString()).withStyle(currentStyle.withColor(TextColor.fromRgb(p.rgbAt(charCount)))))
+                    charCount++
+                }
+            } else {
+                root.append(Component.literal(text).withStyle(currentStyle))
+                charCount += text.length
+            }
+        }
+
+        for (i in parts.indices) {
+            val part = parts[i]
+            if (i == 0) {
+                if (part.isNotEmpty()) { root.append(Component.literal(part)); charCount += part.length }
+                continue
+            }
+            if (part.isEmpty()) continue
+
+            val code = part[0].lowercaseChar()
+            val text = part.substring(1)
+
+            when (code) {
+                '0' -> { currentStyle = currentStyle.withColor(TextColor.fromRgb(0x000000)); isChroma = false }
+                '1' -> { currentStyle = currentStyle.withColor(TextColor.fromRgb(0x0000AA)); isChroma = false }
+                '2' -> { currentStyle = currentStyle.withColor(TextColor.fromRgb(0x00AA00)); isChroma = false }
+                '3' -> { currentStyle = currentStyle.withColor(TextColor.fromRgb(0x00AAAA)); isChroma = false }
+                '4' -> { currentStyle = currentStyle.withColor(TextColor.fromRgb(0xAA0000)); isChroma = false }
+                '5' -> { currentStyle = currentStyle.withColor(TextColor.fromRgb(0xAA00AA)); isChroma = false }
+                '6' -> { currentStyle = currentStyle.withColor(TextColor.fromRgb(0xFFAA00)); isChroma = false }
+                '7' -> { currentStyle = currentStyle.withColor(TextColor.fromRgb(0xAAAAAA)); isChroma = false }
+                '8' -> { currentStyle = currentStyle.withColor(TextColor.fromRgb(0x555555)); isChroma = false }
+                '9' -> { currentStyle = currentStyle.withColor(TextColor.fromRgb(0x5555FF)); isChroma = false }
+                'a' -> { currentStyle = currentStyle.withColor(TextColor.fromRgb(0x55FF55)); isChroma = false }
+                'b' -> { currentStyle = currentStyle.withColor(TextColor.fromRgb(0x55FFFF)); isChroma = false }
+                'c' -> { currentStyle = currentStyle.withColor(TextColor.fromRgb(0xFF5555)); isChroma = false }
+                'd' -> { currentStyle = currentStyle.withColor(TextColor.fromRgb(0xFF55FF)); isChroma = false }
+                'e' -> { currentStyle = currentStyle.withColor(TextColor.fromRgb(0xFFFF55)); isChroma = false }
+                'f' -> { currentStyle = currentStyle.withColor(TextColor.fromRgb(0xFFFFFF)); isChroma = false }
+                'k' -> { currentStyle = currentStyle.withObfuscated(true) }
+                'l' -> { currentStyle = currentStyle.withBold(true) }
+                'm' -> { currentStyle = currentStyle.withStrikethrough(true) }
+                'n' -> { currentStyle = currentStyle.withUnderlined(true) }
+                'o' -> { currentStyle = currentStyle.withItalic(true) }
+                'r' -> { currentStyle = net.minecraft.network.chat.Style.EMPTY; isChroma = false }
+                'z' -> { isChroma = true }
+                else -> { appendText(part); continue }
+            }
+
+            if (text.isNotEmpty()) appendText(text)
+        }
+
+        return root
+    }
+
     @JvmOverloads
     fun drawRect(ctx: GuiGraphicsExtractor, x: Int, y: Int, width: Int, height: Int, color: Color = Color.WHITE) {
-        ctx.fill(RenderPipelines.GUI, x, y, x + width, y + height, color.rgb)
+        if (ProfileViewer.chromaMaxBars && color.rgb and 0xFFFFFF == Palette.Sapphire.rgb and 0xFFFFFF) {
+            ctx.drawLumina {
+                Lumina.chromaRect(x.toFloat(), y.toFloat(), width.toFloat(), height.toFloat())
+            }
+        } else {
+            ctx.fill(RenderPipelines.GUI, x, y, x + width, y + height, color.rgb)
+        }
     }
 
     @JvmOverloads
@@ -60,7 +178,7 @@ object Render2D {
 
         ctx.text(
             client.font,
-            str.replace(formattingRegex, "${ChatFormatting.PREFIX_CODE}"),
+            parseFormattingToComponent(str.replace(formattingRegex, "${ChatFormatting.PREFIX_CODE}")),
             x,
             y,
             -1,
@@ -78,9 +196,11 @@ object Render2D {
             matrices.scale(scale, scale)
         }
 
+        val textToDraw = if (isSapphire(str)) convertComponentToChroma(str) else str
+
         ctx.text(
             client.font,
-            str,
+            textToDraw,
             x,
             y,
             -1,
@@ -98,14 +218,25 @@ object Render2D {
             matrices.scale(scale, scale)
         }
 
-        ctx.text(
-            client.font,
-            str.replace(formattingRegex, "${ChatFormatting.PREFIX_CODE}"),
-            x,
-            y,
-            color.rgb,
-            shadow
-        )
+        if (color.rgb and 0xFFFFFF == Palette.Sapphire.rgb and 0xFFFFFF) {
+            ctx.text(
+                client.font,
+                getChromaText(str),
+                x,
+                y,
+                -1,
+                shadow
+            )
+        } else {
+            ctx.text(
+                client.font,
+                parseFormattingToComponent(str.replace(formattingRegex, "${ChatFormatting.PREFIX_CODE}")),
+                x,
+                y,
+                color.rgb,
+                shadow
+            )
+        }
 
         if (scale != 1f) matrices.popMatrix()
     }

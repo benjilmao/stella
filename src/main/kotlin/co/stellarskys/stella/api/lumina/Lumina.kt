@@ -37,6 +37,7 @@ object Lumina {
     private val shapeBatch = mutableListOf<QueuedShape>()
     private val textBatch = mutableListOf<LuminaBackend.TextEntry>()
     private val imageBatch = mutableListOf<LuminaBackend.ImageEntry>()
+    private val chromaBatch = mutableListOf<ChromaShape>()
     private val drawOrder = mutableListOf<Int>()
     private val transformStack = ArrayDeque<Matrix3x2f>()
     private val scissorStack = ArrayDeque<ScissorRect>()
@@ -65,6 +66,11 @@ object Lumina {
         val gradType: Int, val gradC1: Int, val gradC2: Int,
         val transform: Matrix3x2f, val scissor: ScissorRect?,
         val stencilOp: Int = 0
+    )
+
+    data class ChromaShape(
+        val x: Float, val y: Float, val w: Float, val h: Float,
+        val transform: Matrix3x2f, val scissor: ScissorRect?
     )
 
     init {
@@ -105,6 +111,11 @@ object Lumina {
 
     fun rect(x: Float, y: Float, w: Float, h: Float, color: Int, radius: Float = 0f) {
         rect(x, y, w, h, color, radius, radius, radius, radius)
+    }
+
+    fun chromaRect(x: Float, y: Float, w: Float, h: Float) {
+        chromaBatch.add(ChromaShape(x, y, w, h, Matrix3x2f(currentTransform), scissorStack.lastOrNull()))
+        drawOrder.add(3)
     }
 
     fun rect(x: Float, y: Float, w: Float, h: Float, color: Int, radius: Float, roundTop: Boolean) {
@@ -260,38 +271,51 @@ object Lumina {
     }
 
     fun flush(context: GuiGraphicsExtractor) {
-        if (shapeBatch.isEmpty() && textBatch.isEmpty() && imageBatch.isEmpty()) return
+        if (shapeBatch.isEmpty() && textBatch.isEmpty() && imageBatch.isEmpty() && chromaBatch.isEmpty()) return
         val shapes = ArrayList(shapeBatch); shapeBatch.clear()
         val text = ArrayList(textBatch); textBatch.clear()
         val images = ArrayList(imageBatch); imageBatch.clear()
+        val chroma = ArrayList(chromaBatch); chromaBatch.clear()
         val order = ArrayList(drawOrder); drawOrder.clear()
 
-        data class RenderGroup(val isShape: Boolean, val shapeCount: Int, val textCount: Int, val imageCount: Int)
+        data class RenderGroup(val type: Int, val shapeCount: Int, val textCount: Int, val imageCount: Int, val chromaCount: Int)
         val groups = mutableListOf<RenderGroup>()
         var i = 0
         while (i < order.size) {
-            if (order[i] == 0) {
+            val type = order[i]
+            if (type == 0) {
                 var c = 0; while (i < order.size && order[i] == 0) { c++; i++ }
-                groups.add(RenderGroup(true, c, 0, 0))
+                groups.add(RenderGroup(0, c, 0, 0, 0))
+            } else if (type == 3) {
+                var c = 0; while (i < order.size && order[i] == 3) { c++; i++ }
+                groups.add(RenderGroup(3, 0, 0, 0, c))
             } else {
                 var tc = 0; var ic = 0
-                while (i < order.size && order[i] != 0) { if (order[i] == 1) tc++ else ic++; i++ }
-                groups.add(RenderGroup(false, 0, tc, ic))
+                while (i < order.size && order[i] != 0 && order[i] != 3) { if (order[i] == 1) tc++ else ic++; i++ }
+                groups.add(RenderGroup(1, 0, tc, ic, 0))
             }
         }
 
         LuminaPIPRenderer.draw(context, 0, 0, context.guiWidth(), context.guiHeight()) { vw, vh ->
-            var si = 0; var ti = 0; var ii = 0
+            var si = 0; var ti = 0; var ii = 0; var ci = 0
             for (g in groups) {
-                if (g.isShape) {
-                    val end = (si + g.shapeCount).coerceAtMost(shapes.size)
-                    if (end > si) backend.renderShapes(shapes.subList(si, end), vw, vh)
-                    si = end
-                } else {
-                    val te = (ti + g.textCount).coerceAtMost(text.size)
-                    val ie = (ii + g.imageCount).coerceAtMost(images.size)
-                    if (te > ti || ie > ii) backend.renderTextured(text.subList(ti, te), images.subList(ii, ie), vw, vh)
-                    ti = te; ii = ie
+                when (g.type) {
+                    0 -> {
+                        val end = (si + g.shapeCount).coerceAtMost(shapes.size)
+                        if (end > si) backend.renderShapes(shapes.subList(si, end), vw, vh)
+                        si = end
+                    }
+                    3 -> {
+                        val end = (ci + g.chromaCount).coerceAtMost(chroma.size)
+                        if (end > ci) backend.renderChroma(chroma.subList(ci, end), vw, vh)
+                        ci = end
+                    }
+                    else -> {
+                        val te = (ti + g.textCount).coerceAtMost(text.size)
+                        val ie = (ii + g.imageCount).coerceAtMost(images.size)
+                        if (te > ti || ie > ii) backend.renderTextured(text.subList(ti, te), images.subList(ii, ie), vw, vh)
+                        ti = te; ii = ie
+                    }
                 }
             }
         }
