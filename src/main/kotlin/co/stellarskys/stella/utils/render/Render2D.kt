@@ -40,6 +40,35 @@ object Render2D {
         ctx.blit(RenderPipelines.GUI_TEXTURED, image, x, y, 0f, 0f, width, height, width, height, width, height)
     }
 
+    fun interpolateMultiGradient(colors: List<Int>, time: Float, step: Float, index: Int): Int {
+        if (colors.isEmpty()) return 0xFFFFFF
+        if (colors.size == 1) return colors[0]
+
+        val t = ((time - index * step) % 1.0f).let { if (it < 0) it + 1f else it }
+        val n = colors.size
+        val scaledT = t * n
+        val idx1 = scaledT.toInt() % n
+        val idx2 = (idx1 + 1) % n
+        val localT = scaledT - scaledT.toInt()
+
+        val c1 = colors[idx1]
+        val c2 = colors[idx2]
+
+        val r1 = (c1 shr 16) and 0xFF
+        val g1 = (c1 shr 8) and 0xFF
+        val b1 = c1 and 0xFF
+
+        val r2 = (c2 shr 16) and 0xFF
+        val g2 = (c2 shr 8) and 0xFF
+        val b2 = c2 and 0xFF
+
+        val r = (r1 + (r2 - r1) * localT).toInt().coerceIn(0, 255)
+        val g = (g1 + (g2 - g1) * localT).toInt().coerceIn(0, 255)
+        val b = (b1 + (b2 - b1) * localT).toInt().coerceIn(0, 255)
+
+        return (r shl 16) or (g shl 8) or b
+    }
+
     private data class ChromaParams(
         val time: Float,
         val step: Float,
@@ -47,14 +76,23 @@ object Render2D {
         val bright: Float
     ) {
         fun hueAt(i: Int): Float = ((time - i * step) % 1.0f).let { if (it < 0) it + 1f else it }
-        fun rgbAt(i: Int): Int  = net.minecraft.util.Mth.hsvToRgb(hueAt(i), sat, bright)
-        fun colorAt(i: Int): Color = Color.getHSBColor(hueAt(i), sat, bright)
+        fun rgbAt(i: Int): Int {
+            if (ProfileViewer.chromaMode == 1) {
+                val colors = listOf(
+                    ProfileViewer.chromaColor1.rgb and 0xFFFFFF,
+                    ProfileViewer.chromaColor2.rgb and 0xFFFFFF,
+                    ProfileViewer.chromaColor3.rgb and 0xFFFFFF
+                )
+                return interpolateMultiGradient(colors, time, step, i)
+            }
+            return net.minecraft.util.Mth.hsvToRgb(hueAt(i), sat, bright)
+        }
     }
 
     private fun chromaParams() = ChromaParams(
-        time  = ChromaUtils.currentTime(),
-        step  = CHROMA_STEP / ProfileViewer.chromaScale,
-        sat   = ProfileViewer.chromaSaturation,
+        time = ChromaUtils.currentTime(),
+        step = CHROMA_STEP / ProfileViewer.chromaScale,
+        sat = ProfileViewer.chromaSaturation,
         bright = ProfileViewer.chromaBrightness
     )
 
@@ -63,7 +101,7 @@ object Render2D {
         val comp = Component.literal("")
         val p = chromaParams()
         for (i in clean.indices) {
-            comp.append(Component.literal(clean[i].toString()).withColor(p.colorAt(i).rgb))
+            comp.append(Component.literal(clean[i].toString()).withColor(p.rgbAt(i)))
         }
         return comp
     }
@@ -77,7 +115,7 @@ object Render2D {
         val out = Component.literal("")
         val p = chromaParams()
         for (i in clean.indices) {
-            out.append(Component.literal(clean[i].toString()).withStyle(comp.style.withColor(TextColor.fromRgb(p.colorAt(i).rgb))))
+            out.append(Component.literal(clean[i].toString()).withStyle(comp.style.withColor(TextColor.fromRgb(p.rgbAt(i)))))
         }
         return out
     }
@@ -138,7 +176,7 @@ object Render2D {
                 'o' -> { currentStyle = currentStyle.withItalic(true) }
                 'r' -> { currentStyle = net.minecraft.network.chat.Style.EMPTY; isChroma = false }
                 'z' -> { isChroma = true }
-                else -> { appendText(part); continue }
+                else -> { if (text.isNotEmpty()) appendText(text); continue }
             }
 
             if (text.isNotEmpty()) appendText(text)

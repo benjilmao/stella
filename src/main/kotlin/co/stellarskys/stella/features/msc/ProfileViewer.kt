@@ -11,6 +11,7 @@ import co.stellarskys.stella.features.msc.profileUtils.CollectionUtils
 import co.stellarskys.stella.features.msc.profileUtils.PvScreen
 import co.stellarskys.stella.features.msc.profileUtils.SkillUtils
 import co.stellarskys.stella.utils.config
+import java.awt.Color
 import kotlin.time.Duration.Companion.minutes
 
 @Module
@@ -22,6 +23,10 @@ object ProfileViewer: Feature("profileViewer") {
     val chromaScale by config.property<Float>("profileViewer.chromaScale")
     val chromaSaturation by config.property<Float>("profileViewer.chromaSaturation")
     val chromaBrightness by config.property<Float>("profileViewer.chromaBrightness")
+    val chromaMode by config.property<Int>("profileViewer.chromaMode")
+    val chromaColor1 by config.property<Color>("profileViewer.chromaColor1")
+    val chromaColor2 by config.property<Color>("profileViewer.chromaColor2")
+    val chromaColor3 by config.property<Color>("profileViewer.chromaColor3")
 
     override fun initialize() {
         SkillUtils.load()

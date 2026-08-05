@@ -1388,6 +1388,39 @@ val config = Config(Stella.NAMESPACE) {
                 shouldShow { settings -> settings["profileViewer.chromaMaxBars"] as Boolean }
             }
 
+            dropdown {
+                configName = "profileViewer.chromaMode"
+                name = "Chroma Mode"
+                description = "Choose between standard rainbow or custom multi-color gradient"
+                options = listOf("Rainbow HSB", "Custom Multi-Gradient")
+                default = 0
+                shouldShow { settings -> settings["profileViewer.chromaMaxBars"] as Boolean }
+            }
+
+            colorpicker {
+                configName = "profileViewer.chromaColor1"
+                name = "Gradient Color 1"
+                description = "Primary color for custom multi-gradient"
+                default = Color(255, 0, 127, 255)
+                shouldShow { settings -> (settings["profileViewer.chromaMaxBars"] as Boolean) && ((settings["profileViewer.chromaMode"] as Int) == 1) }
+            }
+
+            colorpicker {
+                configName = "profileViewer.chromaColor2"
+                name = "Gradient Color 2"
+                description = "Secondary color for custom multi-gradient"
+                default = Color(0, 240, 255, 255)
+                shouldShow { settings -> (settings["profileViewer.chromaMaxBars"] as Boolean) && ((settings["profileViewer.chromaMode"] as Int) == 1) }
+            }
+
+            colorpicker {
+                configName = "profileViewer.chromaColor3"
+                name = "Gradient Color 3"
+                description = "Tertiary color for custom multi-gradient"
+                default = Color(255, 240, 0, 255)
+                shouldShow { settings -> (settings["profileViewer.chromaMaxBars"] as Boolean) && ((settings["profileViewer.chromaMode"] as Int) == 1) }
+            }
+
             toggle {
                 configName = "profileViewer.overflow"
                 name = "Overflow Skills"
@@ -1398,14 +1431,68 @@ val config = Config(Stella.NAMESPACE) {
 
         subcategory("Clean Prefixes", "cleanPrefix", "Guild -> G / Party -> P")
 
-        /*
-        subcategory("Custom Nametags") {
+        subcategory("Self Cosmetic", "selfCosmetic", "Customize your own name & tag cosmetic") {
             toggle {
-                configName = "customNametags"
-                name = "Enabled"
-                description = "Enables the soulflow display"
+                configName = "selfCosmetic.enabled"
+                name = "Enable Self Cosmetic"
+                description = "Applies custom rainbow/gradient cosmetic to your own player name"
+                default = false
+            }
+
+            textinput {
+                configName = "selfCosmetic.name"
+                name = "Custom Name"
+                description = "Override display name (leave empty for current player name)"
+                shouldShow { settings -> settings["selfCosmetic.enabled"] as Boolean }
+            }
+
+            textinput {
+                configName = "selfCosmetic.tag"
+                name = "Custom Tag"
+                description = "Extra badge/title attached to your name (e.g. [DEV])"
+                shouldShow { settings -> settings["selfCosmetic.enabled"] as Boolean }
+            }
+
+            dropdown {
+                configName = "selfCosmetic.mode"
+                name = "Cosmetic Mode"
+                description = "Choose between Rainbow HSB or Custom Multi-Gradient"
+                options = listOf("Rainbow HSB", "Custom Gradient")
+                default = 1
+                shouldShow { settings -> settings["selfCosmetic.enabled"] as Boolean }
+            }
+
+            colorpicker {
+                configName = "selfCosmetic.color1"
+                name = "Gradient Color 1"
+                description = "First color in the gradient"
+                default = Color(255, 0, 127, 255)
+                shouldShow { settings -> (settings["selfCosmetic.enabled"] as Boolean) && ((settings["selfCosmetic.mode"] as Int) == 1) }
+            }
+
+            colorpicker {
+                configName = "selfCosmetic.color2"
+                name = "Gradient Color 2"
+                description = "Second color in the gradient"
+                default = Color(0, 240, 255, 255)
+                shouldShow { settings -> (settings["selfCosmetic.enabled"] as Boolean) && ((settings["selfCosmetic.mode"] as Int) == 1) }
+            }
+
+            toggle {
+                configName = "selfCosmetic.enable3rd"
+                name = "Enable 3rd Color"
+                description = "Add a 3rd color to the gradient cycle"
+                default = false
+                shouldShow { settings -> (settings["selfCosmetic.enabled"] as Boolean) && ((settings["selfCosmetic.mode"] as Int) == 1) }
+            }
+
+            colorpicker {
+                configName = "selfCosmetic.color3"
+                name = "Gradient Color 3"
+                description = "Third color in the gradient"
+                default = Color(255, 240, 0, 255)
+                shouldShow { settings -> (settings["selfCosmetic.enabled"] as Boolean) && ((settings["selfCosmetic.mode"] as Int) == 1) && (settings["selfCosmetic.enable3rd"] as Boolean) }
             }
         }
-         */
     }
 }
